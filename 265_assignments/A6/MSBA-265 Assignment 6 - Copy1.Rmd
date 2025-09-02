@@ -1,0 +1,175 @@
+---
+title: "MSBA_265_As_6"
+author: "Khushbu Singh"
+date: "2024-10-23"
+output: html_document
+---
+# Setting up Library needed
+I will load movie data which is a CSV file into a data frame df and then will use read.csv(). It will displays the structure and a statistical summary of available data with str(), for that summary() for exploration.
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+
+##Installing Needed library
+library(ggplot2)
+```
+```{r data, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(dplyr)
+
+# Loading the CSV data and storing in df
+df <- read.csv("C:/Users/Khush/R. Studio/moviedata.csv")
+
+# To print the data frame
+str(df)
+# To print data Summary
+summary(df)
+
+```
+# Visualization of Data using ggplot
+
+Plot displaying Critic Ratings vs.Level of Violence
+
+- We will now visualize the relationship between violence, critic rating, and whether Ms. X watched the movie or not.
+- The code uses `ggplot2` for scatter plot.
+- It shows the relationship of critic ratings and the level of violence in movies. 
+- Each point is colored on the bases of whether Ms. X watched the movie, using `Watched` variable as a factor. The plot includes a title and labeled axes for clarity.
+```{r Plot}
+# Plot level of violence vs. critic ratings and color by 'watched' status
+ggplot(df, aes(x = LevelOfViolence, y = CriticsRating, color = factor(Watched))) +
+  geom_point() +
+  labs(title = "Level of Violence vs Critic Ratings", x ="Level of Violence" , y = "Critic Ratings", color = "Watched (1 = Yes, -1 = No)")
+```
+
+# Running the Perceptron Learning Algorithm (PLA) Training Process
+
+- In this implementation, I have develop the Perceptron Learning Algorithm (PLA) from the ground up, manually coding the algorithm and updating the weights iteratively until it converges.
+- The PLA works by repeatedly adjusting the weights and bias to correctly classify data points.
+- For each data point, the algorithm calculates a linear combination, makes a prediction, and updates the weights and bias when the prediction is incorrect. 
+- This process continues until algorithm Converges or the maximum number of iterations is achieved. The final output includes the weights, bias, and the number of iterations.
+```{r pla, echo=TRUE}
+perceptron <- function(X, y, max_iter = 1000) {
+  # Initialize weights for features and bias
+  weights <- rep(0, ncol(X))  # Assign weights to zeros
+  bias <- 0                   # Assign bias as Zeros
+  num_iter <- 0               # Initialize number of iterations to 0
+  done_training <- FALSE      # flag to track Convergence of training. Initialize with false value
+  
+  while (!done_training && num_iter < max_iter) {
+    done_training <- TRUE #start with true if all sample are correctly classified that means training is converged
+    num_iter <- num_iter + 1
+    
+    # Iterate over each data point
+    for (i in 1:nrow(X)) {
+      # Determine the linear combination (bias + dot product)
+      output <- sum(weights * X[i, ]) + bias
+      predicted_y <- ifelse(output >= 0, 1, -1)  # Prediction on the bases of output sign
+      
+      # Checking the prediction with the actual label to update weights and biases
+      if (predicted_y!= y[i]) {
+        # Update the bias and weights
+        # new_weight = old_weight + yn* Xn
+        weights <- weights + y[i] * X[i, ]
+        bias <- bias + y[i]
+        done_training  <- FALSE  # Since there is an update, training is not converged so we reset convergence flag to false
+      }
+    }
+  }
+  
+  # Finalized weights, bias, and iteration total
+  return(list(weights = weights, bias = bias, num_iter = num_iter))
+}
+```
+# Running PLA 
+
+- The code organizes data (`CriticsRating` and `LevelOfViolence`) and target labels (`Watched`) as input into the perceptron algorithm. It executes the algorithm to train the model, capturing the resulting weights, bias, and iteration count. The output is presented with `cat()` to display the learned parameters and convergence information.
+```{r Perceptron-Algorithm, echo=TRUE, warning=FALSE, message=FALSE}
+# Prepare features and labels for input data
+X <- as.matrix(df[, c("CriticsRating", "LevelOfViolence")])  
+# Using critic ratings and violence level as features
+y <- df$Watched  # Target variable: indicates if Ms. X watched the movie
+
+# Implement the perceptron algorithm
+modelPla <- perceptron(X, y)
+
+# Display the resulting weights, bias, and iteration count
+cat("Trained Weights:", modelPla$weights, "\n")
+```
+```{r}
+cat("Trained Bias:", modelPla$bias, "\n")
+```
+```{r}
+cat("numb_of_Iterations to Converge:", modelPla$num_iter, "\n")
+```
+# Calculate Slope and Intercept 
+- `calculate_slope_and_intercept()` is a helper function to calculate slope and intercept of decision boundary.
+- **Input Arguments** : Weights and Bias of the trained model
+- The function calculates slope and intercept of the decision boundary. It does not print anything but it will be used latter on by other functions
+```{r}
+calculate_slope_and_intercept <- function(modelPla) {
+  w1 <- modelPla$weights[1]
+  w2 <- modelPla$weights[2]
+  bias <- modelPla$bias
+  
+  # Evaluate the slope and intercept of the decision boundary
+  slope_value <- -w1 / w2
+  intercept_value <- -bias / w2
+  
+  # Return slope and intercept to the caller function
+  return(list(slope = slope_value, intercept = intercept_value))
+}
+```
+
+# Model Report
+- `report_model()` is a helper function to print slope and intercept of decision boundary.
+- **Input Arguments** : Weights and Bias of the trained model
+- The function uses `calculate_slope_and_intercept()` to get  slope and intercept of the decision boundary and prints them on terminal.
+
+```{r modelReport}
+report_model <- function(modelPla) {
+  # get slope and intercept of decision boundary
+  result <-  calculate_slope_and_intercept(modelPla)
+  slope <- result$slope # get slope value
+  intercept <- result$intercept # get intercept value
+  
+  # Output of the decision boundary equation
+  cat("The decision boundary equation is: \n")
+  cat("LevelOfViolence =", slope, "* CriticsRating +", intercept, "\n")
+}
+
+# Call the function to display the model details
+report_model(modelPla)
+```
+
+# Decision Boundary Plot
+
+- `plot_decision_boundary()` is a helper function to plot the decision boundary. 
+- The function uses `calculate_slope_and_intercept()` to get  slope and intercept of the decision boundary.
+- Scatter plot of all the data points is displayed using `ggplot2` API. 
+- Decision boundary is plotted on top of data points as dashed line segment.
+- To visualize the data points in movie data set, this function is called with all required arguments.
+
+```{r}
+plot_decision_boundary <- function(modelPla, data) {
+  
+  # get slope and intercept of decision boundary
+  result <-  calculate_slope_and_intercept(modelPla)
+  slope <- result$slope # get slope value
+  intercept <- result$intercept # get intercept value
+
+  # Visualize the data points along with the decision boundary
+  ggplot(data, aes(x = CriticsRating, y = LevelOfViolence, color = factor(Watched))) +
+  geom_point() +  # Scatter plot for the data points 
+  geom_abline(slope = slope, intercept = intercept, color = "blue", linetype = "dashed") + # Line segment for decesion boundary
+  labs(title = "Data Points Alongside the Decision Boundary",
+         x = "Critic Ratings",
+         y = "Level of Violence",
+         color = "Watched (1 = Yes, -1 = No)") +
+  theme_minimal()  # Optimize this plot for better clarity
+  
+}
+
+# This is a helper function to plot the decision boundary.
+# This function renders the decision boundary alongside the data points from the dataset.
+plot_decision_boundary(modelPla, df)
+```
+

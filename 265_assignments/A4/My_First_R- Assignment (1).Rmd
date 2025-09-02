@@ -1,0 +1,110 @@
+---
+title: "265 Assigment"
+author: "Khushbu"
+date: "2024-09-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = F, message = F)
+
+library(dplyr)
+library(ggplot2)
+```
+
+## Linear Regression
+Today, we will be using "ProstateData" that was collected from patients with 
+prostate cancer to create a model that will predict the value of psa based on other variables in the data. It has been found that psa, an antigen, is raised in a diagnosis of prostate cancer.
+
+
+# Load the prostate dataset. read.csv will read our csv file name Prostate Data
+#Print summary with str(d)
+```{r data}
+d= read.csv('ProstateData.csv')
+str(d)
+```
+
+#This R code uses the `factor()` function to convert the existing data in the column `svi` within the dataset `d` into a categorical variable, assigning levels "svi0" and "svi1". It then displays the structure of the updated dataset `d`, reflecting the changes made to the `svi` column..
+```{r categorical}
+d = d%>%
+  mutate(svi = factor(svi, label=c("svi0", "svi1")))
+str(d)
+```
+#This below R function outputs the contrast matrix used to encode the levels of the categorical variable 'svi' in the dataset 'd'.
+```{r cat1}
+contrasts(d$svi)
+```
+
+#This R code uses the `ggplot2` package to create a quantile-quantile (Q-Q) plot for the `lpsa` variable in the dataset `d`, enabling a comparison between its distribution and a theoretical normal distribution.
+```{r dist}
+d %>%
+  ggplot(aes(sample = lpsa)) +
+  geom_qq()
+
+```
+
+#This R function generates a regression matrix for numerical parameters in the dataset 'd', ignoring columns'svi' and 'train', then shows the relationships between those variables
+```{r relationships}
+d %>%
+  select(-svi, -train) %>%
+  cor()
+```
+
+#This R code employs ggplot2 to generate a boxplot representation evaluating the distribution of the 'lpsa' variable at various levels of the classification variable'svi' in the set of data 'd'
+```{r catRelations}
+d %>%
+  ggplot(aes(x=svi, y=lpsa, fill =svi)) + geom_boxplot()
+```
+
+#This R code performs an independent two-sample t-test to compare the `lpsa` variable across different levels of the categorical variable `svi` in the dataset `d`. It then uses the `broom` package to extract and display the p-values from the test results.
+```{r statTest}
+library(broom)
+d %>%
+  do(tidy(t.test(lpsa~svi, data= .))) %>%
+  select(p.value)
+```
+
+#This R function splits the dataset `d` into two separate subsets: `trainD`, which includes observations where the `train` column is TRUE, and `testD`, which includes observations where the `train` column is FALSE. The `train` column is excluded from both subsets.
+```{r splitData}
+trainD = d%>%
+  filter(train == T) %>%
+  select(-train)
+testD = d%>%
+  filter(train == F) %>%
+  select(-train)
+```
+
+#This R code utilizes the `leaps` package to build a linear regression model (`model`) that predicts `lpsa` based on all other variables in the training dataset `trainD` using the forward selection algorithm. It then provides a summary of the process, including the best set of predictors chosen and their associated statistics.
+#Using regsubsets to apply forward selection
+#In this case, we are predicting the PSA value using various predictors.
+#'psa' is the dependent variable, and other variables are predictors.
+#'method = forward' specifies that we want to use the forward selection method.
+#Forward selection involves selecting players one by one, focusing on building the team based on synergy at each step. In contrast, exhaustive selection evaluates all possible player combinations to find the optimal team, but this approach is highly time-consuming due to the sheer number of possibilities.
+```{r buildingModel}
+library(leaps)
+model = regsubsets(lpsa~. , data=trainD,method="exhaustive")
+summary(model)
+```
+
+```{r modelMetrics}
+#view adjusted R-squared value of each model
+summary(model)$adjr2
+```
+
+```{r modelMartics2}
+#view Residual Sum of Squares value of each model
+summary(model)$rss
+
+```
+
+```{r maxMetric}
+modelSum <- summary(model)
+which.max(modelSum$adjr2)
+
+```
+
+```{r modelCoef}
+modelSum <- summary(model)
+coef(model,which.max(modelSum$adjr2))
+```
+
